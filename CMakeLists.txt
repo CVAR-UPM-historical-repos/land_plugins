@@ -22,7 +22,6 @@ set(PROJECT_DEPENDENCIES
   nav_msgs
   as2_core
   as2_msgs
-  geometry_msgs
   as2_motion_command_handlers
 )
 
