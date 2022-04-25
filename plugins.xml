@@ -1,0 +1,5 @@
+<library path="land_plugins">
+  <class type="land_plugins::LandSpeed" base_class_type="land_base::LandBase">
+    <description>Land done with speed commands.</description>
+  </class>
+</library>
