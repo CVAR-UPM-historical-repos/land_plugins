@@ -55,8 +55,7 @@ namespace land_plugins
             goal_handle->succeed(result);
             RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
 
-            // TODO: change this to hover
-            motion_handler.sendSpeedCommandWithYawSpeed(0.0, 0.0, 0.0, 0.0);
+            motion_handler.sendSpeedCommandWithYawSpeed(0.0, 0.0, -5.0, 0.0);
             return true;
         }
 
