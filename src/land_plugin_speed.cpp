@@ -1,5 +1,5 @@
 #include "land_base.hpp"
-#include "as2_motion_command_handlers/speed_motion.hpp"
+#include "motion_reference_handlers/speed_motion.hpp"
 
 namespace land_plugins
 {
@@ -24,7 +24,7 @@ namespace land_plugins
             auto feedback = std::make_shared<as2_msgs::action::Land::Feedback>();
             auto result = std::make_shared<as2_msgs::action::Land::Result>();
 
-            static as2::motionCommandsHandlers::SpeedMotion motion_handler(node_ptr_);
+            static as2::motionReferenceHandlers::SpeedMotion motion_handler(node_ptr_);
 
             time_ = node_ptr_->now();
 

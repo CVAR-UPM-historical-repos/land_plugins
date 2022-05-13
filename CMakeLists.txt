@@ -22,7 +22,7 @@ set(PROJECT_DEPENDENCIES
   nav_msgs
   as2_core
   as2_msgs
-  as2_motion_command_handlers
+  motion_reference_handlers
 )
 
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
