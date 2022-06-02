@@ -37,8 +37,8 @@
 #include "land_base.hpp"
 #include "motion_reference_handlers/speed_motion.hpp"
 
-namespace land_plugins {
-class LandSpeed : public land_base::LandBase {
+namespace land_plugin_speed {
+class Plugin : public land_base::LandBase {
   public:
   rclcpp_action::GoalResponse onAccepted(
       const std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
@@ -105,9 +105,9 @@ class LandSpeed : public land_base::LandBase {
   private:
   rclcpp::Time time_;
 
-};  // LandSpeed class
-}  // namespace land_plugins
+};  // Plugin class
+}  // namespace land_plugin_speed
 
 #include <pluginlib/class_list_macros.hpp>
 
-PLUGINLIB_EXPORT_CLASS(land_plugins::LandSpeed, land_base::LandBase)
+PLUGINLIB_EXPORT_CLASS(land_plugin_speed::Plugin, land_base::LandBase)
