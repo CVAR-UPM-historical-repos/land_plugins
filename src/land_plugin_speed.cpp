@@ -35,6 +35,7 @@
  ********************************************************************************/
 
 #include "land_base.hpp"
+#include "motion_reference_handlers/hover_motion.hpp"
 #include "motion_reference_handlers/speed_motion.hpp"
 
 namespace land_plugin_speed {
@@ -57,7 +58,8 @@ class Plugin : public land_base::LandBase {
     auto feedback = std::make_shared<as2_msgs::action::Land::Feedback>();
     auto result = std::make_shared<as2_msgs::action::Land::Result>();
 
-    static as2::motionReferenceHandlers::SpeedMotion motion_handler(node_ptr_);
+    static as2::motionReferenceHandlers::SpeedMotion motion_handler_speed(node_ptr_);
+    static as2::motionReferenceHandlers::HoverMotion motion_handler_hover(node_ptr_);
 
     time_ = node_ptr_->now();
 
@@ -67,13 +69,11 @@ class Plugin : public land_base::LandBase {
         result->land_success = false;
         goal_handle->canceled(result);
         RCLCPP_WARN(node_ptr_->get_logger(), "Goal canceled");
-
-        // TODO: change this to hover
-        motion_handler.sendSpeedCommandWithYawSpeed(0.0, 0.0, 0.0, 0.0);
+        motion_handler_hover.sendHover();
         return false;
       }
 
-      motion_handler.sendSpeedCommandWithYawSpeed(0.0, 0.0, desired_speed_, 0.0);
+      motion_handler_speed.sendSpeedCommandWithYawSpeed(0.0, 0.0, desired_speed_, 0.0);
 
       feedback->actual_land_height = actual_heigth_;
       feedback->actual_land_speed = actual_z_speed_;
@@ -85,8 +85,7 @@ class Plugin : public land_base::LandBase {
     result->land_success = true;
     goal_handle->succeed(result);
     RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
-
-    motion_handler.sendSpeedCommandWithYawSpeed(0.0, 0.0, -0.1, 0.0);
+    motion_handler_speed.sendSpeedCommandWithYawSpeed(0.0, 0.0, -0.1, 0.0);
     return true;
   }
 
