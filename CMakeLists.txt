@@ -30,7 +30,7 @@ foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
   find_package(${DEPENDENCY} REQUIRED)
 endforeach()
 
-add_library(land_plugins src/land_plugin_speed.cpp)
+add_library(land_plugins src/land_plugin_speed.cpp src/land_plugin_platform.cpp)
 target_include_directories(land_plugins PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
