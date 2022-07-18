@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 set(PROJECT_NAME land_plugins)
-project(${PROJECT_NAME} VERSION 0.1.0)
+project(${PROJECT_NAME} VERSION 0.2.0)
 
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
@@ -24,6 +24,7 @@ set(PROJECT_DEPENDENCIES
   as2_core
   as2_msgs
   motion_reference_handlers
+  std_srvs
 )
 
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
