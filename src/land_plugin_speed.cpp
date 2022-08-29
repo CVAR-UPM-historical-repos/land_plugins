@@ -75,9 +75,9 @@ class Plugin : public land_base::LandBase {
 
       motion_handler_speed.sendSpeedCommandWithYawSpeed(0.0, 0.0, desired_speed_, 0.0);
 
-      feedback->actual_land_height = actual_heigth_;
-      feedback->actual_land_speed = actual_z_speed_;
-      goal_handle->publish_feedback(feedback);
+      // feedback->actual_land_height = actual_heigth_;
+      // feedback->actual_land_speed = actual_z_speed_;
+      // goal_handle->publish_feedback(feedback);
 
       loop_rate.sleep();
     }
