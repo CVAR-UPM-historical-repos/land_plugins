@@ -68,7 +68,7 @@ namespace land_plugin_platform
             request.data = true;
 
             auto takeoff_cli = as2::SynchronousServiceClient<std_srvs::srv::SetBool>(
-                as2_names::services::platform::land);
+                as2_names::services::platform::land, node_ptr_);
 
             bool out = takeoff_cli.sendRequest(request, response);
 
