@@ -63,6 +63,8 @@ class Plugin : public land_base::LandBase {
 
     time_ = node_ptr_->now();
 
+    std::string frame_id_twist = as2::tf::generateTfName(node_ptr_->get_namespace(), frame_id_twist_);
+
     // Check if goal is done
     while (!checkGoalCondition()) {
       if (goal_handle->is_canceling()) {
@@ -73,7 +75,7 @@ class Plugin : public land_base::LandBase {
         return false;
       }
 
-      motion_handler_speed.sendSpeedCommandWithYawSpeed(0.0, 0.0, desired_speed_, 0.0);
+      motion_handler_speed.sendSpeedCommandWithYawSpeed(frame_id_twist, 0.0, 0.0, desired_speed_, 0.0);
 
       feedback->actual_land_height = actual_heigth_;
       feedback->actual_land_speed = actual_z_speed_;
@@ -85,7 +87,7 @@ class Plugin : public land_base::LandBase {
     result->land_success = true;
     goal_handle->succeed(result);
     RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
-    motion_handler_speed.sendSpeedCommandWithYawSpeed(0.0, 0.0, -0.1, 0.0);
+    motion_handler_speed.sendSpeedCommandWithYawSpeed(frame_id_twist, 0.0, 0.0, -0.1, 0.0);
     return true;
   }
 
