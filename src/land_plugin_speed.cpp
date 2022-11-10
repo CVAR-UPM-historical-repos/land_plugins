@@ -40,7 +40,7 @@
 
 namespace land_plugin_speed {
 class Plugin : public land_base::LandBase {
-  public:
+public:
   rclcpp_action::GoalResponse onAccepted(
       const std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
     desired_speed_ = goal->land_speed;
@@ -55,15 +55,16 @@ class Plugin : public land_base::LandBase {
   bool onExecute(const std::shared_ptr<GoalHandleLand> goal_handle) override {
     rclcpp::Rate loop_rate(10);
     const auto goal = goal_handle->get_goal();
-    auto feedback = std::make_shared<as2_msgs::action::Land::Feedback>();
-    auto result = std::make_shared<as2_msgs::action::Land::Result>();
+    auto feedback   = std::make_shared<as2_msgs::action::Land::Feedback>();
+    auto result     = std::make_shared<as2_msgs::action::Land::Result>();
 
     static as2::motionReferenceHandlers::SpeedMotion motion_handler_speed(node_ptr_);
     static as2::motionReferenceHandlers::HoverMotion motion_handler_hover(node_ptr_);
 
     time_ = node_ptr_->now();
 
-    std::string frame_id_twist = as2::tf::generateTfName(node_ptr_->get_namespace(), frame_id_twist_);
+    std::string frame_id_twist =
+        as2::tf::generateTfName(node_ptr_->get_namespace(), frame_id_twist_);
 
     // Check if goal is done
     while (!checkGoalCondition()) {
@@ -75,10 +76,11 @@ class Plugin : public land_base::LandBase {
         return false;
       }
 
-      motion_handler_speed.sendSpeedCommandWithYawSpeed(frame_id_twist, 0.0, 0.0, desired_speed_, 0.0);
+      motion_handler_speed.sendSpeedCommandWithYawSpeed(frame_id_twist, 0.0, 0.0, desired_speed_,
+                                                        0.0);
 
       feedback->actual_land_height = actual_heigth_;
-      feedback->actual_land_speed = actual_z_speed_;
+      feedback->actual_land_speed  = actual_z_speed_;
       goal_handle->publish_feedback(feedback);
 
       loop_rate.sleep();
@@ -91,7 +93,7 @@ class Plugin : public land_base::LandBase {
     return true;
   }
 
-  private:
+private:
   bool checkGoalCondition() {
     if (fabs(actual_z_speed_) < 0.1) {
       if ((node_ptr_->now() - this->time_).seconds() > 2) {
@@ -103,7 +105,7 @@ class Plugin : public land_base::LandBase {
     return false;
   }
 
-  private:
+private:
   rclcpp::Time time_;
 
 };  // Plugin class

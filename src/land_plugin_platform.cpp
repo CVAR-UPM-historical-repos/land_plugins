@@ -38,59 +38,53 @@
 #include "land_base.hpp"
 #include "motion_reference_handlers/hover_motion.hpp"
 
-namespace land_plugin_platform
-{
-    class Plugin : public land_base::LandBase
-    {
-    public:
-        rclcpp_action::GoalResponse onAccepted(const std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override
-        {
-            return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-        }
+namespace land_plugin_platform {
+class Plugin : public land_base::LandBase {
+public:
+  rclcpp_action::GoalResponse onAccepted(
+      const std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+  }
 
-        rclcpp_action::CancelResponse onCancel(const std::shared_ptr<GoalHandleLand> goal_handle) override
-        {
-            return rclcpp_action::CancelResponse::ACCEPT;
-        }
+  rclcpp_action::CancelResponse onCancel(
+      const std::shared_ptr<GoalHandleLand> goal_handle) override {
+    return rclcpp_action::CancelResponse::ACCEPT;
+  }
 
-        bool onExecute(const std::shared_ptr<GoalHandleLand> goal_handle) override
-        {
-            rclcpp::Rate loop_rate(10);
-            const auto goal = goal_handle->get_goal();
-            auto feedback = std::make_shared<as2_msgs::action::Land::Feedback>();
-            auto result = std::make_shared<as2_msgs::action::Land::Result>();
+  bool onExecute(const std::shared_ptr<GoalHandleLand> goal_handle) override {
+    rclcpp::Rate loop_rate(10);
+    const auto goal = goal_handle->get_goal();
+    auto feedback   = std::make_shared<as2_msgs::action::Land::Feedback>();
+    auto result     = std::make_shared<as2_msgs::action::Land::Result>();
 
-            static as2::motionReferenceHandlers::HoverMotion motion_handler_hover(node_ptr_);
+    static as2::motionReferenceHandlers::HoverMotion motion_handler_hover(node_ptr_);
 
-            // Send platform takeoff service request
-            auto request = std_srvs::srv::SetBool::Request();
-            auto response = std_srvs::srv::SetBool::Response();
-            request.data = true;
+    // Send platform takeoff service request
+    auto request  = std_srvs::srv::SetBool::Request();
+    auto response = std_srvs::srv::SetBool::Response();
+    request.data  = true;
 
-            auto takeoff_cli = as2::SynchronousServiceClient<std_srvs::srv::SetBool>(
-                as2_names::services::platform::land, node_ptr_);
+    auto takeoff_cli = as2::SynchronousServiceClient<std_srvs::srv::SetBool>(
+        as2_names::services::platform::land, node_ptr_);
 
-            bool out = takeoff_cli.sendRequest(request, response);
+    bool out = takeoff_cli.sendRequest(request, response);
 
-            if (!(out && response.success))
-            {
-                result->land_success = false;
-                goal_handle->canceled(result);
-                RCLCPP_ERROR(node_ptr_->get_logger(),
-                             "Platform land service request failed");
-                motion_handler_hover.sendHover();
-                return false;
-            }
+    if (!(out && response.success)) {
+      result->land_success = false;
+      goal_handle->canceled(result);
+      RCLCPP_ERROR(node_ptr_->get_logger(), "Platform land service request failed");
+      motion_handler_hover.sendHover();
+      return false;
+    }
 
+    result->land_success = true;
+    goal_handle->succeed(result);
+    RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
+    return true;
+  }
 
-            result->land_success = true;
-            goal_handle->succeed(result);
-            RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
-            return true;
-        }
-
-    }; // Plugin class
-} // namespace land_plugin_platform
+};  // Plugin class
+}  // namespace land_plugin_platform
 
 #include <pluginlib/class_list_macros.hpp>
 
