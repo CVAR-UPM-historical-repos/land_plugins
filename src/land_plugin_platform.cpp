@@ -1,6 +1,6 @@
 /*!*******************************************************************************************
  *  \file       land_plugin_platform.cpp
- *  \brief      land_plugin_platform implementation file
+ *  \brief      This file contains the implementation of the land behaviour platform plugin
  *  \authors    Miguel Fernández Cortizas
  *              Pedro Arias Pérez
  *              David Pérez Saura
@@ -34,54 +34,87 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ********************************************************************************/
 
+#include <chrono>
 #include <std_srvs/srv/set_bool.hpp>
+#include "as2_behavior/behavior_server.hpp"
+#include "as2_core/names/services.hpp"
 #include "land_base.hpp"
-#include "motion_reference_handlers/hover_motion.hpp"
 
 namespace land_plugin_platform {
+
 class Plugin : public land_base::LandBase {
 public:
-  rclcpp_action::GoalResponse onAccepted(
-      const std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
-    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+  void ownInit() {
+    platform_land_cli_ =
+        node_ptr_->create_client<std_srvs::srv::SetBool>(as2_names::services::platform::land);
+    platform_land_request_->data = true;
+    return;
   }
 
-  rclcpp_action::CancelResponse onCancel(
-      const std::shared_ptr<GoalHandleLand> goal_handle) override {
-    return rclcpp_action::CancelResponse::ACCEPT;
-  }
-
-  bool onExecute(const std::shared_ptr<GoalHandleLand> goal_handle) override {
-    rclcpp::Rate loop_rate(10);
-    const auto goal = goal_handle->get_goal();
-    auto feedback   = std::make_shared<as2_msgs::action::Land::Feedback>();
-    auto result     = std::make_shared<as2_msgs::action::Land::Result>();
-
-    static as2::motionReferenceHandlers::HoverMotion motion_handler_hover(node_ptr_);
-
-    // Send platform takeoff service request
-    auto request  = std_srvs::srv::SetBool::Request();
-    auto response = std_srvs::srv::SetBool::Response();
-    request.data  = true;
-
-    auto takeoff_cli = as2::SynchronousServiceClient<std_srvs::srv::SetBool>(
-        as2_names::services::platform::land, node_ptr_);
-
-    bool out = takeoff_cli.sendRequest(request, response);
-
-    if (!(out && response.success)) {
-      result->land_success = false;
-      goal_handle->canceled(result);
-      RCLCPP_ERROR(node_ptr_->get_logger(), "Platform land service request failed");
-      motion_handler_hover.sendHover();
+  bool own_activate(std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
+    using namespace std::chrono_literals;
+    if (!platform_land_cli_->wait_for_service(5s)) {
+      RCLCPP_ERROR(node_ptr_->get_logger(), "Platform land service not available");
       return false;
     }
 
-    result->land_success = true;
-    goal_handle->succeed(result);
-    RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
+    platform_land_future_ = platform_land_cli_->async_send_request(platform_land_request_);
+
+    if (!platform_land_future_.valid()) {
+      RCLCPP_ERROR(node_ptr_->get_logger(), "Request could not be sent");
+      return false;
+    }
     return true;
   }
+
+  as2_behavior::ExecutionStatus own_run() override {
+    if (platform_land_future_.valid() &&
+        platform_land_future_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+      auto result = platform_land_future_.get();
+      if (result->success) {
+        result_.land_success = true;
+        return as2_behavior::ExecutionStatus::SUCCESS;
+      } else {
+        result_.land_success = false;
+        return as2_behavior::ExecutionStatus::FAILURE;
+      }
+    }
+    return as2_behavior::ExecutionStatus::RUNNING;
+  }
+
+  void own_execution_end(const as2_behavior::ExecutionStatus &state) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land end");
+    if (state != as2_behavior::ExecutionStatus::SUCCESS) {
+      sendHover();
+    }
+    return;
+  }
+
+  bool on_deactivate(const std::shared_ptr<std::string> &message) override {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land can not be cancelled");
+    return false;
+  }
+
+  bool on_pause(const std::shared_ptr<std::string> &message) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land can not be paused");
+    return false;
+  }
+
+  bool on_resume(const std::shared_ptr<std::string> &message) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land can not be resumed");
+    return false;
+  }
+
+  bool own_modify(std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land can not be modified");
+    return false;
+  }
+
+private:
+  rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr platform_land_cli_;
+
+  std_srvs::srv::SetBool::Request::SharedPtr platform_land_request_;
+  rclcpp::Client<std_srvs::srv::SetBool>::SharedFuture platform_land_future_;
 
 };  // Plugin class
 }  // namespace land_plugin_platform

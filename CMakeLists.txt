@@ -18,6 +18,7 @@ set(PROJECT_DEPENDENCIES
   ament_cmake_ros
   pluginlib
   land_plugin_base
+  as2_behavior
   rclcpp
   rclcpp_action
   nav_msgs
