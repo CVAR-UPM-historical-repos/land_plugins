@@ -1,6 +1,6 @@
 /*!*******************************************************************************************
  *  \file       land_plugin_speed.cpp
- *  \brief      land_plugin_speed implementation file
+ *  \brief      This file contains the implementation of the land behaviour speed plugin
  *  \authors    Miguel Fernández Cortizas
  *              Pedro Arias Pérez
  *              David Pérez Saura
@@ -34,68 +34,82 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ********************************************************************************/
 
+#include "as2_behavior/behavior_server.hpp"
 #include "land_base.hpp"
-#include "motion_reference_handlers/hover_motion.hpp"
 #include "motion_reference_handlers/speed_motion.hpp"
 
 namespace land_plugin_speed {
+
 class Plugin : public land_base::LandBase {
+private:
+  std::shared_ptr<as2::motionReferenceHandlers::SpeedMotion> speed_motion_handler_ = nullptr;
+
 public:
-  rclcpp_action::GoalResponse onAccepted(
-      const std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
-    desired_speed_ = goal->land_speed;
-    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+  void ownInit() {
+    speed_motion_handler_ = std::make_shared<as2::motionReferenceHandlers::SpeedMotion>(node_ptr_);
   }
 
-  rclcpp_action::CancelResponse onCancel(
-      const std::shared_ptr<GoalHandleLand> goal_handle) override {
-    return rclcpp_action::CancelResponse::ACCEPT;
-  }
-
-  bool onExecute(const std::shared_ptr<GoalHandleLand> goal_handle) override {
-    rclcpp::Rate loop_rate(10);
-    const auto goal = goal_handle->get_goal();
-    auto feedback   = std::make_shared<as2_msgs::action::Land::Feedback>();
-    auto result     = std::make_shared<as2_msgs::action::Land::Result>();
-
-    static as2::motionReferenceHandlers::SpeedMotion motion_handler_speed(node_ptr_);
-    static as2::motionReferenceHandlers::HoverMotion motion_handler_hover(node_ptr_);
-
-    time_ = node_ptr_->now();
-
-    std::string frame_id_twist =
-        as2::tf::generateTfName(node_ptr_->get_namespace(), frame_id_twist_);
-
-    // Check if goal is done
-    while (!checkGoalCondition()) {
-      if (goal_handle->is_canceling()) {
-        result->land_success = false;
-        goal_handle->canceled(result);
-        RCLCPP_WARN(node_ptr_->get_logger(), "Goal canceled");
-        motion_handler_hover.sendHover();
-        return false;
-      }
-
-      motion_handler_speed.sendSpeedCommandWithYawSpeed(frame_id_twist, 0.0, 0.0, desired_speed_,
-                                                        0.0);
-
-      feedback->actual_land_height = actual_heigth_;
-      feedback->actual_land_speed  = actual_z_speed_;
-      goal_handle->publish_feedback(feedback);
-
-      loop_rate.sleep();
-    }
-
-    result->land_success = true;
-    goal_handle->succeed(result);
-    RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
-    motion_handler_speed.sendSpeedCommandWithYawSpeed(frame_id_twist, 0.0, 0.0, -0.1, 0.0);
+  bool on_deactivate(const std::shared_ptr<std::string> &message) override {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land canceled, set to hover");
+    sendHover();
     return true;
   }
 
+  bool on_pause(const std::shared_ptr<std::string> &message) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land paused");
+    sendHover();
+    return true;
+  }
+
+  bool on_resume(const std::shared_ptr<std::string> &message) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land resumed");
+    time_ = node_ptr_->now();
+    return true;
+  }
+
+  bool own_activate(std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land accepted");
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land with speed: %f", goal->land_speed);
+    time_ = node_ptr_->now();
+    return true;
+  }
+
+  bool own_modify(std::shared_ptr<const as2_msgs::action::Land::Goal> goal) override {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land goal modified");
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land with speed: %f", goal->land_speed);
+    time_ = node_ptr_->now();
+    return true;
+  }
+
+  as2_behavior::ExecutionStatus own_run() override {
+    if (checkGoalCondition()) {
+      result_.land_success = true;
+      RCLCPP_INFO(node_ptr_->get_logger(), "Goal succeeded");
+      return as2_behavior::ExecutionStatus::SUCCESS;
+    }
+
+    if (!speed_motion_handler_->sendSpeedCommandWithYawSpeed("earth", 0.0, 0.0, goal_.land_speed,
+                                                             0.0)) {
+      RCLCPP_ERROR(node_ptr_->get_logger(), "LAND PLUGIN: Error sending speed command");
+      result_.land_success = false;
+      return as2_behavior::ExecutionStatus::FAILURE;
+    }
+
+    return as2_behavior::ExecutionStatus::RUNNING;
+  }
+
+  void own_execution_end(const as2_behavior::ExecutionStatus &state) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Land end");
+    if (state != as2_behavior::ExecutionStatus::SUCCESS) {
+      sendHover();
+    }
+    return;
+  }
+
 private:
+  rclcpp::Time time_;
   bool checkGoalCondition() {
-    if (fabs(actual_z_speed_) < 0.1) {
+    if (fabs(feedback_.actual_land_speed) < 0.05) {
       if ((node_ptr_->now() - this->time_).seconds() > 2) {
         return true;
       }
@@ -104,9 +118,6 @@ private:
     }
     return false;
   }
-
-private:
-  rclcpp::Time time_;
 
 };  // Plugin class
 }  // namespace land_plugin_speed
